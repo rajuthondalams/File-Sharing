@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Share</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        #container {
+            background: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            width: 350px;
+            text-align: center;
+        }
+        input[type="file"], input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 16px;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        #download-item button {
+            background-color: #28a745;
+            margin-top: 10px;
+        }
+        #key input {
+            background: #f8f9fa;
+            font-weight: bold;
+            text-align: center;
+            border: none;
+        }
+        #timer {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #d9534f;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <h3>Share To Anyone, Anywhere</h3>
+        <div>Upload Share Item</div>
+        <input type="file" id="file">
+        <button onclick="upload()" id="upload">Upload</button>
+        
+        <div>Download File</div>
+        <input type="text" id="input-key" placeholder="Enter the Key">
+        <button onclick="check()" id="check" disabled>Check</button>
+        <div id="download-item"></div>
+        
+        <div>The Key</div>
+        <div id="key"><input type="text" readonly></div>
+        <div id="timer"></div>
+    </div>
+    
+    <script>
+        let countdownInterval;
+
+        function upload() {
+            let fileInput = document.getElementById("file");
+            let file = fileInput.files[0];
+
+            if (!file) {
+                alert("Please select a file to upload.");
+                return;
+            }
+
+            document.getElementById("upload").disabled = true;
+            document.getElementById("check").disabled = false;
+
+            let reader = new FileReader();
+            reader.onload = function(event) {
+                localStorage.setItem("fileIN", event.target.result);
+                let key = generateRandomKey();
+                localStorage.setItem("fileKey", key);
+                document.getElementById("key").querySelector("input").value = key;
+
+                let expiryTime = Date.now() + 10 * 60 * 1000;
+                localStorage.setItem("expiryTime", expiryTime);
+                startTimer(expiryTime);
+            };
+
+            reader.readAsDataURL(file);
+        }
+
+        function check() {
+            let enteredKey = document.getElementById("input-key").value;
+            let storedKey = localStorage.getItem("fileKey");
+            let storedFile = localStorage.getItem("fileIN");
+            let expiryTime = localStorage.getItem("expiryTime");
+
+            if (!storedKey || !storedFile) {
+                alert("No file available or key expired.");
+                return;
+            }
+
+            if (Date.now() > expiryTime) {
+                alert("The key has expired.");
+                clearStorage();
+                return;
+            }
+
+            if (enteredKey === storedKey) {
+                document.getElementById("input-key").value = "";
+                document.getElementById("check").disabled = true;
+
+                let link = document.createElement("a");
+                link.href = storedFile;
+                link.download = "downloaded_file";
+                link.innerText = "Download";
+                link.style.display = "block";
+                link.style.marginTop = "10px";
+                link.style.padding = "10px";
+                link.style.background = "#28a745";
+                link.style.color = "white";
+                link.style.textAlign = "center";
+                link.style.borderRadius = "5px";
+                link.style.textDecoration = "none";
+                
+                document.getElementById("download-item").innerHTML = "";
+                document.getElementById("download-item").appendChild(link);
+                document.getElementById("upload").disabled = false;
+            } else {
+                alert("Invalid key. Please try again.");
+            }
+        }
+
+        function generateRandomKey(length = 10) {
+            return Math.random().toString(36).substring(2, length + 2);
+        }
+
+        function startTimer(expiryTime) {
+            clearInterval(countdownInterval);
+
+            function updateTimer() {
+                let remainingTime = expiryTime - Date.now();
+                if (remainingTime <= 0) {
+                    document.getElementById("timer").innerText = "Key expired!";
+                    clearStorage();
+                    clearInterval(countdownInterval);
+                    return;
+                }
+                let minutes = Math.floor(remainingTime / 60000);
+                let seconds = Math.floor((remainingTime % 60000) / 1000);
+                document.getElementById("timer").innerText = ` ${minutes}m ${seconds}s `;
+            }
+
+            updateTimer();
+            countdownInterval = setInterval(updateTimer, 1000);
+        }
+
+        function clearStorage() {
+            localStorage.clear();
+            document.getElementById("key").querySelector("input").value = "";
+            document.getElementById("timer").innerText = "";
+            document.getElementById("upload").disabled = false;
+            document.getElementById("check").disabled = true;
+            document.getElementById("download-item").innerHTML = "";
+        }
+    </script>
+</body>
+</html>
